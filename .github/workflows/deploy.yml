@@ -1,0 +1,29 @@
+name: Deploy to Raspberry Pi
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Pobranie kodu
+        uses: actions/checkout@v3
+
+      - name: Skopiowanie plików na Raspberry Pi
+        run: |
+          ssh pi@IP_RASPBERRY "mkdir -p ~/fastapi-relay"
+          rsync -avz --exclude '.git' . pi@IP_RASPBERRY:~/fastapi-relay
+
+      - name: Uruchomienie aplikacji w Dockerze
+        run: |
+          ssh pi@IP_RASPBERRY << 'EOF'
+            cd ~/fastapi-relay
+            docker stop fastapi-relay || true
+            docker rm fastapi-relay || true
+            docker build -t fastapi-relay .
+            docker run -d -p 8000:8000 --name fastapi-relay fastapi-relay
+          EOF
